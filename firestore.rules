@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // The browser never talks to Firestore directly: every read and write goes
+    // through this app's API routes using the Admin SDK, which bypasses these
+    // rules entirely. So denying all client access is correct, not a mistake —
+    // and it means no Firebase Auth is needed anywhere.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

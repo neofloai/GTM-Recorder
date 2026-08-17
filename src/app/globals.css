@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  /* Light, high-contrast palette: white surfaces, near-black text. */
+  --color-page: #ffffff;
+  --color-surface: #ffffff;
+  --color-raised: #f7f8f9;
+  --color-line: #e4e6e9;
+  --color-subtle: #5f6672;
+  --color-strong: #0a0a0a;
+  --color-brand: #d92c2c;
+  --color-focus: #1a1a1a;
+}
+
+html,
+body {
+  background: var(--color-page);
+  color: var(--color-strong);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Slim scrollbars so the transcript and chat panes don't feel heavy. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cfd3d8 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cfd3d8;
+  border-radius: 9999px;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.recording-dot {
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.panel-in {
+  animation: panel-in 0.18s ease-out;
+}
+
+/* Keep the native audio player from looking out of place on white. */
+audio {
+  color-scheme: light;
+}
