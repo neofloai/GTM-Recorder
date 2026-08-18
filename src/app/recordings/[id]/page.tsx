@@ -12,6 +12,7 @@ import {
   renameRecording,
   summarize,
   transcribe,
+  updateUtterance,
 } from "@/lib/client-api";
 import { usePoll } from "@/lib/use-poll";
 import { formatBytes, formatTimestamp, hasSpeech, type Recording } from "@/lib/types";
@@ -103,6 +104,12 @@ export default function RecordingPage() {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  /** Saves one edited line and swaps in the server's copy of the recording. */
+  async function editUtterance(index: number, text: string) {
+    const updated = await updateUtterance(recordingId, index, text);
+    setData(updated);
   }
 
   function seek(seconds: number) {
@@ -228,6 +235,7 @@ export default function RecordingPage() {
           summarizing={summarizing}
           summaryError={summaryError}
           onRegenerate={() => void runSummarize(true)}
+          onEditUtterance={editUtterance}
         />
       )}
     </div>

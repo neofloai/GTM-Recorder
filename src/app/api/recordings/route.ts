@@ -25,8 +25,12 @@ export async function POST(req: Request) {
     const url = new URL(req.url);
     const durationMs = Number(url.searchParams.get("durationMs") ?? "0");
     const mimeType = url.searchParams.get("mimeType") || "audio/webm";
-    const title =
-      url.searchParams.get("title") || `Recording ${new Date().toLocaleString()}`;
+    // The client asks for a title before uploading; enforce it here too so a
+    // recording can never end up untitled.
+    const title = (url.searchParams.get("title") ?? "").trim();
+    if (!title) {
+      return Response.json({ error: "a title is required" }, { status: 400 });
+    }
 
     // The client validates too, but it can be bypassed — and a non-audio body
     // would otherwise fail deep inside Deepgram with a confusing message.

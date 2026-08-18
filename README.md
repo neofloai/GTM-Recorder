@@ -37,9 +37,21 @@ a fixed bottom tab bar:
 - **Recordings** — every recording, newest first, with a status chip (filled black once
   ready). Tap one to open it.
 
+Both paths ask for a **title before anything is saved** — it's mandatory, so Save stays
+disabled until the field has content, and [`POST /api/recordings`](src/app/api/recordings/route.ts)
+rejects a blank one too. Uploads prefill the filename; recordings start empty. Discarding
+throws the capture away without writing anything.
+
 A recording's page has **Transcript** and **Summary** tabs plus a **Chat with this
 transcript** button that opens a chatbox — full-screen on a phone, docked bottom-right on
 desktop, `Esc` to close. Tapping a timestamp in the transcript seeks the audio.
+
+**The transcript is editable.** Tap any line to correct what Deepgram heard; Enter saves,
+Escape cancels. Only the text changes — timestamps and speaker numbers are preserved, so
+seeking and `[mm:ss]` citations keep working. Editing marks the summary out of date
+(`Summary *` on the tab, plus a banner with **Generate a new summary**) rather than
+silently regenerating it, so you decide when to spend the tokens. Chat picks up edits
+immediately, since it reads the transcript fresh on every turn.
 
 A recording containing no speech says so plainly rather than showing an empty panel, and
 hides the summary and chat, which would have nothing to work with.
@@ -179,7 +191,9 @@ summary and the chat answers. It never emits raw HTML, so model output can't inj
 ```
 recordings/{recordingId}
   title, status, createdAt, durationMs, sizeBytes, mimeType, chunkCount, error,
-  transcript: { text, utterances[], speakerCount, language, model, transcribedAt }
+  summaryStale,
+  transcript: { text, utterances[], speakerCount, language, model, transcribedAt,
+                editedAt }
   summary:    { text, model, generatedAt }
 
 recordings/{recordingId}/audioChunks/{index}
@@ -200,6 +214,7 @@ message.
 | `POST /api/recordings` | Create; body is raw audio, metadata in query params |
 | `GET /api/recordings/[id]` | One recording (polled while processing) |
 | `PATCH /api/recordings/[id]` | Rename |
+| `PATCH /api/recordings/[id]/transcript` | Edit one utterance's text |
 | `DELETE /api/recordings/[id]` | Delete it, its chunks and its chat |
 | `GET /api/recordings/[id]/audio` | Reassembled audio, supports `Range` |
 | `GET /api/recordings/[id]/messages` | Chat history |

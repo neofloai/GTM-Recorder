@@ -16,6 +16,7 @@ type Props = {
   summarizing: boolean;
   summaryError: string | null;
   onRegenerate: () => void;
+  onEditUtterance: (index: number, text: string) => Promise<void>;
 };
 
 export default function RecordingTabs({
@@ -25,6 +26,7 @@ export default function RecordingTabs({
   summarizing,
   summaryError,
   onRegenerate,
+  onEditUtterance,
 }: Props) {
   const [tab, setTab] = useState<Tab>("transcript");
   const [chatOpen, setChatOpen] = useState(false);
@@ -51,7 +53,7 @@ export default function RecordingTabs({
                 <Sparkles size={15} strokeWidth={1.9} />
               )
             }
-            label="Summary"
+            label={recording.summaryStale ? "Summary *" : "Summary"}
           />
         </div>
 
@@ -60,6 +62,7 @@ export default function RecordingTabs({
             recording={recording}
             currentTime={currentTime}
             onSeek={onSeek}
+            onEditUtterance={onEditUtterance}
           />
         ) : speech ? (
           <SummaryView

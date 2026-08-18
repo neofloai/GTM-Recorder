@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, Loader2 } from "lucide-react";
+import TitleSheet from "@/components/TitleSheet";
 import Uploader from "@/components/Uploader";
 import { createRecording, transcribe } from "@/lib/client-api";
 import { MAX_AUDIO_BYTES, formatMaxSize } from "@/lib/audio";
@@ -24,7 +25,8 @@ function pickMimeType(): string {
   return "";
 }
 
-type Phase = "idle" | "recording" | "saving";
+// "naming" holds the finished blob while the user supplies a mandatory title.
+type Phase = "idle" | "recording" | "naming" | "saving";
 
 export default function Recorder() {
   const router = useRouter();
@@ -34,6 +36,10 @@ export default function Recorder() {
   const [stage, setStage] = useState("");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // The finished recording, held back until it has been given a title.
+  const [pending, setPending] = useState<{ blob: Blob; durationMs: number } | null>(
+    null,
+  );
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -100,7 +106,7 @@ export default function Recorder() {
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
-      recorder.onstop = () => void save(recorder.mimeType || mimeType);
+      recorder.onstop = () => void prepare(recorder.mimeType || mimeType);
       recorder.start(1000);
       recorderRef.current = recorder;
 
@@ -117,58 +123,79 @@ export default function Recorder() {
     }
   }
 
-  /** The Submit button: stops capture, which kicks off save() via onstop. */
+  /** The Submit button: stops capture, which hands off to prepare() via onstop. */
   function submit() {
     const recorder = recorderRef.current;
     if (!recorder || phase !== "recording") return;
-    setPhase("saving");
-    setStage("Finishing recording");
+    setPhase("naming");
     recorder.stop();
   }
 
-  async function save(mimeType: string) {
+  /** Assembles the blob and asks for a title; nothing is uploaded yet. */
+  async function prepare(mimeType: string) {
     const durationMs = Date.now() - startedAtRef.current;
     teardown();
 
-    try {
-      const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
-      chunksRef.current = [];
-      if (blob.size === 0) throw new Error("the recording came back empty");
-      if (blob.size > MAX_AUDIO_BYTES) {
-        throw new Error(
-          `this recording is ${formatBytes(blob.size)}, over the ${formatMaxSize()} limit`,
-        );
-      }
+    const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
+    chunksRef.current = [];
 
-      setStage("Saving");
-      setProgress(0);
+    if (blob.size === 0) {
+      setPhase("idle");
+      setError("The recording came back empty.");
+      return;
+    }
+    if (blob.size > MAX_AUDIO_BYTES) {
+      setPhase("idle");
+      setError(
+        `This recording is ${formatBytes(blob.size)}, over the ${formatMaxSize()} limit.`,
+      );
+      return;
+    }
+
+    setPending({ blob, durationMs });
+  }
+
+  async function save(title: string) {
+    if (!pending) return;
+    setPhase("saving");
+    setError(null);
+    setProgress(0);
+
+    try {
       const id = await createRecording(
-        blob,
-        durationMs,
-        `Recording ${new Date().toLocaleString()}`,
+        pending.blob,
+        pending.durationMs,
+        title,
         setProgress,
       );
 
       // Kick transcription off without waiting; the detail page polls for status.
-      setStage("Transcribing");
       void transcribe(id).catch(() => {});
 
+      setPending(null);
       setPhase("idle");
       setStage("");
       setProgress(0);
       setElapsedMs(0);
       router.push(`/recordings/${id}`);
     } catch (err) {
-      setPhase("idle");
-      setStage("");
+      // Stay on the sheet so the title isn't lost and Save can be retried.
+      setPhase("naming");
       setProgress(0);
-      setError(
-        `Could not save the recording: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      setError(err instanceof Error ? err.message : String(err));
     }
   }
 
-  const saving = phase === "saving";
+  function discard() {
+    if (!confirm("Discard this recording? It hasn't been saved.")) return;
+    setPending(null);
+    setPhase("idle");
+    setStage("");
+    setError(null);
+    setElapsedMs(0);
+  }
+
+  const saving = phase === "saving" || phase === "naming";
   const recording = phase === "recording";
   // The button grows slightly with your voice, so you can see the mic is live.
   const scale = recording ? 1 + level * 0.08 : 1;
@@ -214,9 +241,11 @@ export default function Recorder() {
           {recording && <span className="blink h-2 w-2 rounded-full bg-ink" />}
           {recording
             ? "Recording"
-            : saving
-              ? stage || "Saving"
-              : "Tap the microphone to start"}
+            : phase === "naming"
+              ? "Name it to save"
+              : saving
+                ? stage || "Saving"
+                : "Tap the microphone to start"}
         </p>
       </div>
 
@@ -251,10 +280,22 @@ export default function Recorder() {
         </>
       )}
 
-      {error && (
+      {/* Errors raised before the sheet opens; the sheet shows its own. */}
+      {error && !pending && (
         <p className="max-w-sm rounded-xl border-2 border-ink px-4 py-3 text-sm">
           {error}
         </p>
+      )}
+
+      {pending && (
+        <TitleSheet
+          sizeBytes={pending.blob.size}
+          durationMs={pending.durationMs}
+          saving={phase === "saving"}
+          error={error}
+          onSave={(title) => void save(title)}
+          onDiscard={discard}
+        />
       )}
     </div>
   );

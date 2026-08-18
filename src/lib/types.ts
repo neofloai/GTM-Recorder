@@ -35,6 +35,8 @@ export type Recording = {
     language?: string;
     model?: string;
     transcribedAt: number;
+    /** Set when a user has hand-edited any utterance. */
+    editedAt?: number;
   };
   summary?: {
     /** Markdown, rendered by src/components/Markdown.tsx. */
@@ -42,6 +44,11 @@ export type Recording = {
     model: string;
     generatedAt: number;
   };
+  /**
+   * True when the transcript changed after the summary was written, so the
+   * summary no longer reflects it. Cleared when a new summary is generated.
+   */
+  summaryStale?: boolean;
   error?: string;
 };
 

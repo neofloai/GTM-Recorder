@@ -81,6 +81,27 @@ export default function SummaryView({
         </div>
       </div>
 
+      {/* The transcript changed after this summary was written. */}
+      {recording.summaryStale && (
+        <div className="border-b border-hairline px-4 py-3">
+          <p className="text-[13px]">
+            The transcript was edited, so this summary is out of date.
+          </p>
+          <button
+            onClick={onRegenerate}
+            disabled={generating}
+            className="mt-2.5 flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-page transition active:opacity-80 disabled:opacity-40"
+          >
+            {generating ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <RefreshCw size={13} />
+            )}
+            Generate a new summary
+          </button>
+        </div>
+      )}
+
       {error && <p className="border-b border-hairline px-4 py-2.5 text-[13px]">{error}</p>}
 
       <div className="max-h-[55vh] overflow-y-auto px-4 py-4">

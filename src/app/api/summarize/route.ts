@@ -56,6 +56,7 @@ export async function POST(req: Request) {
     title?: string;
     transcript?: { text?: string; utterances?: Utterance[] };
     summary?: { text?: string };
+    summaryStale?: boolean;
   };
   if (!data.transcript) {
     return Response.json(
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
 
   // The detail page fires this automatically on first view, so a cached summary
   // short-circuits instead of re-billing the model on every visit.
-  if (data.summary?.text && !body.force) {
+  if (data.summary?.text && !body.force && !data.summaryStale) {
     return Response.json({ ok: true, cached: true });
   }
 
@@ -98,6 +99,8 @@ export async function POST(req: Request) {
 
     await doc.update({
       summary: { text, model, generatedAt: Date.now() },
+      // This summary now reflects the current transcript.
+      summaryStale: false,
     });
 
     return Response.json({ ok: true, cached: false, characters: text.length });

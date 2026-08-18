@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload } from "lucide-react";
+import TitleSheet from "@/components/TitleSheet";
 import { createRecording, transcribe } from "@/lib/client-api";
 import {
   ACCEPT_ATTR,
@@ -27,6 +28,10 @@ export default function Uploader() {
   const [stage, setStage] = useState("");
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The chosen file, held back until it has been given a title.
+  const [pending, setPending] = useState<{ file: File; durationMs: number } | null>(
+    null,
+  );
 
   async function handleFile(file: File) {
     setError(null);
@@ -46,33 +51,40 @@ export default function Uploader() {
       return;
     }
 
+    // Probe before opening the sheet so it can show the real duration.
     setBusy(true);
+    setStage("Reading file");
+    const durationMs = await probeDuration(file);
+    setBusy(false);
+    setStage("");
+    setPending({ file, durationMs });
+  }
+
+  async function save(title: string) {
+    if (!pending) return;
+    setBusy(true);
+    setError(null);
     setProgress(0);
     try {
-      setStage("Reading file");
-      const durationMs = await probeDuration(file);
-
-      setStage("Uploading");
-      const id = await createRecording(
-        file,
-        durationMs,
-        titleFromFilename(file.name),
-        setProgress,
-      );
-
-      // Same as the recorder: fire and forget, the detail page polls for status.
-      setStage("Transcribing");
+      const id = await createRecording(pending.file, pending.durationMs, title, setProgress);
       void transcribe(id).catch(() => {});
+      setPending(null);
       router.push(`/recordings/${id}`);
     } catch (err) {
+      // Keep the sheet open so the title survives and Save can be retried.
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
       setProgress(0);
       setStage("");
-      // Let the same file be picked again after a failure.
       if (inputRef.current) inputRef.current.value = "";
     }
+  }
+
+  function discard() {
+    setPending(null);
+    setError(null);
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   return (
@@ -114,7 +126,7 @@ export default function Uploader() {
         {busy ? stage || "Uploading" : "Upload a recording"}
       </button>
 
-      {busy && (
+      {busy && progress > 0 && (
         <div
           className="h-1.5 overflow-hidden rounded-full bg-wash"
           role="progressbar"
@@ -129,16 +141,28 @@ export default function Uploader() {
         </div>
       )}
 
-      {!busy && (
+      {!busy && !pending && (
         <p className="text-center text-[12px]">
           MP3, M4A, WAV, FLAC, OGG or WebM · up to {formatMaxSize()}
         </p>
       )}
 
-      {error && (
+      {error && !pending && (
         <p className="rounded-xl border-2 border-ink px-3 py-2 text-[13px] break-words">
           {error}
         </p>
+      )}
+
+      {pending && (
+        <TitleSheet
+          initialTitle={titleFromFilename(pending.file.name)}
+          sizeBytes={pending.file.size}
+          durationMs={pending.durationMs}
+          saving={busy}
+          error={error}
+          onSave={(title) => void save(title)}
+          onDiscard={discard}
+        />
       )}
     </div>
   );

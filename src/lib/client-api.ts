@@ -78,6 +78,20 @@ export async function deleteRecording(id: string): Promise<void> {
   await json(await fetch(`/api/recordings/${id}`, { method: "DELETE" }));
 }
 
+/** Saves an edited utterance and returns the updated recording. */
+export async function updateUtterance(
+  recordingId: string,
+  index: number,
+  text: string,
+): Promise<Recording> {
+  const res = await fetch(`/api/recordings/${recordingId}/transcript`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ index, text }),
+  });
+  return (await json<{ recording: Recording }>(res)).recording;
+}
+
 export async function transcribe(recordingId: string): Promise<void> {
   await json(
     await fetch("/api/transcribe", {
