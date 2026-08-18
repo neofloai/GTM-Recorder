@@ -1,7 +1,11 @@
 import { listModels, DEFAULT_MODEL } from "@/lib/openrouter";
 
-/** OpenRouter's catalogue changes slowly; an hour of caching is plenty. */
-export const revalidate = 3600;
+/**
+ * Must run per request. With `revalidate` alone Next prerendered this at build
+ * time, where OPENROUTER_API_KEY isn't set on a CI/deploy machine — baking an
+ * empty model list into the static output and serving it until the cache expired.
+ */
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

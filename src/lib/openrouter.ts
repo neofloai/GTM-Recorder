@@ -135,7 +135,12 @@ const EXCLUDED = /(-image|-audio|-codex|:batch|:free|instruct)/;
  * list is narrowed to `openai/*` with the configured default pinned first.
  */
 export async function listModels(): Promise<OpenRouterModel[]> {
-  const res = await fetch(`${OPENROUTER_BASE}/models`, { headers: headers() });
+  const res = await fetch(`${OPENROUTER_BASE}/models`, {
+    headers: headers(),
+    // The route runs per request; cache the upstream catalogue for an hour so
+    // opening the chat sheet doesn't call OpenRouter every time.
+    next: { revalidate: 3600 },
+  });
   if (!res.ok) throw new Error(`OpenRouter models failed (${res.status})`);
   const json = (await res.json()) as {
     data?: Array<{ id: string; name?: string; context_length?: number }>;
