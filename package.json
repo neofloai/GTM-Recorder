@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:https": "next dev --experimental-https"
   },
   "dependencies": {
     "firebase-admin": "^13.1.0",

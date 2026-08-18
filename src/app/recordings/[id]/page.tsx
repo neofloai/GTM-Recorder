@@ -160,23 +160,24 @@ export default function RecordingPage() {
             className="w-full rounded-lg border border-line px-3 py-1.5 text-xl font-semibold outline-none focus:border-ink"
           />
         ) : (
-          <div className="flex items-start gap-2">
-            <h1 className="min-w-0 flex-1 text-xl font-semibold tracking-tight">
+          <div className="flex items-start gap-1">
+            <h1 className="mt-1.5 min-w-0 flex-1 text-xl font-semibold tracking-tight">
               {recording.title}
             </h1>
+            {/* 44px hit areas, and a gap before Delete so it isn't mis-tapped. */}
             <button
               onClick={() => setEditingTitle(true)}
-              className="mt-1 shrink-0"
+              className="tap grid shrink-0 place-items-center rounded-full"
               aria-label="Rename"
             >
-              <Pencil size={15} strokeWidth={1.9} />
+              <Pencil size={17} strokeWidth={1.9} />
             </button>
             <button
               onClick={() => void remove()}
-              className="mt-1 shrink-0"
+              className="tap ml-1 grid shrink-0 place-items-center rounded-full"
               aria-label="Delete recording"
             >
-              <Trash2 size={15} strokeWidth={1.9} />
+              <Trash2 size={17} strokeWidth={1.9} />
             </button>
           </div>
         )}
@@ -215,7 +216,7 @@ export default function RecordingPage() {
           <button
             onClick={() => void retryTranscription()}
             disabled={retrying}
-            className="mt-3 flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-page transition active:opacity-80 disabled:opacity-40"
+            className="mt-3 flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 text-[13px] font-semibold text-page transition active:opacity-80 disabled:opacity-40"
           >
             {retrying ? (
               <Loader2 size={13} className="animate-spin" />
@@ -246,7 +247,7 @@ function BackLink() {
   return (
     <Link
       href="/recordings"
-      className="inline-flex items-center gap-1.5 text-[13px] font-medium uppercase tracking-wide"
+      className="-ml-1 inline-flex min-h-11 items-center gap-1.5 px-1 text-[13px] font-medium uppercase tracking-wide"
     >
       <ArrowLeft size={15} strokeWidth={2} /> Recordings
     </Link>

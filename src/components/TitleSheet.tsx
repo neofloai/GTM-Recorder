@@ -36,6 +36,9 @@ export default function TitleSheet({
     // Focus and select so an offered filename can be typed straight over.
     inputRef.current?.focus();
     inputRef.current?.select();
+    // iOS doesn't shrink the viewport for the keyboard, so make sure the field
+    // and the buttons under it are scrolled into view.
+    inputRef.current?.scrollIntoView({ block: "center" });
   }, []);
 
   const trimmed = title.trim();
@@ -46,7 +49,7 @@ export default function TitleSheet({
       role="dialog"
       aria-modal="true"
       aria-label="Name this recording"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-ink/40 sm:items-center sm:justify-center"
+      className="fixed inset-0 z-50 flex flex-col justify-end overflow-y-auto bg-ink/40 sm:items-center sm:justify-center"
     >
       <form
         onSubmit={(e) => {

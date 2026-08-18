@@ -12,6 +12,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   // The layout is fixed-height on the record tab; let it fill the notch area.
   viewportFit: "cover",
+  // Shrink the viewport when the on-screen keyboard opens, so fixed sheets stay
+  // above it instead of being covered.
+  interactiveWidget: "resizes-content",
   themeColor: "#ffffff",
 };
 

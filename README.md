@@ -56,6 +56,17 @@ immediately, since it reads the transcript fresh on every turn.
 A recording containing no speech says so plainly rather than showing an empty panel, and
 hides the summary and chat, which would have nothing to work with.
 
+### Mobile specifics
+
+Verified down to a 320px-wide viewport and in landscape, with no horizontal scrolling
+anywhere. Every control has at least a 44px touch target — Rename and Delete are spaced
+apart so the destructive one isn't mis-tapped. Short viewports (landscape phones) scale
+the record pane down via a `max-height` media query, because at full size the upload
+button fell below the fold and out of reach. Form text is 16px so iOS doesn't zoom on
+focus, `interactiveWidget: "resizes-content"` keeps the title sheet and chat input above
+the on-screen keyboard, and the tab bar and chat sheet carry safe-area padding to clear
+the home indicator.
+
 ## Setup
 
 ### 1. Install
@@ -95,8 +106,21 @@ Keys needed: [Deepgram](https://console.deepgram.com) and
 npm run dev
 ```
 
-Open http://localhost:3000. Microphone capture needs a secure context — `localhost`
-counts, but a bare LAN IP does not.
+Open http://localhost:3000.
+
+### Testing on a phone
+
+Microphone capture only works in a **secure context**. `localhost` qualifies; a plain
+`http://192.168.x.x` does not — browsers don't even expose `navigator.mediaDevices`
+there, so the record button is disabled with an explanation and only uploading works.
+To record from a phone on your network, serve over HTTPS:
+
+```bash
+npm run dev:https
+```
+
+Next generates a self-signed certificate; open the `https://<your-lan-ip>:3000` address
+it prints and accept the warning once.
 
 Optionally push the rules (they only tighten the default):
 

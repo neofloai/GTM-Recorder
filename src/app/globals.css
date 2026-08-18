@@ -88,3 +88,45 @@ audio {
   color-scheme: light;
   filter: grayscale(1);
 }
+
+/* Landscape phones and short windows: the full-size record pane doesn't fit, and
+   the upload option ends up below the fold. Scale it down rather than letting it
+   overflow. */
+@media (max-height: 600px) {
+  .record-pane {
+    min-height: 0;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  .record-button,
+  .record-ring {
+    height: 5rem !important;
+    width: 5rem !important;
+  }
+  .record-button svg {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+  .record-timer {
+    font-size: 1.5rem;
+    line-height: 1.75rem;
+  }
+  /* The accepted-formats line is the first thing worth dropping when space is
+     this tight — the picker itself still enforces them. */
+  .upload-hint {
+    display: none;
+  }
+
+  /* Trim the tab-bar allowance so the page doesn't scroll by a few stray pixels. */
+  main {
+    padding-bottom: 5rem;
+  }
+}
+
+/* Every control should be comfortable to hit with a thumb. Where a control has to
+   stay visually small, the hit area is expanded with padding instead. */
+.tap {
+  min-height: 44px;
+  min-width: 44px;
+}

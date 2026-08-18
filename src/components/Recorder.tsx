@@ -28,6 +28,24 @@ function pickMimeType(): string {
 // "naming" holds the finished blob while the user supplies a mandatory title.
 type Phase = "idle" | "recording" | "naming" | "saving";
 
+/**
+ * Browsers only expose getUserMedia in a secure context. Opening the dev server
+ * from a phone over plain http://<lan-ip> therefore cannot record at all, which
+ * is worth saying plainly instead of failing on tap.
+ */
+function micUnavailableReason(): string | null {
+  if (typeof window === "undefined") return null;
+  // The types say mediaDevices always exists; at runtime it is absent outside a
+  // secure context, so this has to be checked rather than trusted.
+  const media = (navigator as Navigator & { mediaDevices?: MediaDevices })
+    .mediaDevices;
+  if (media && typeof media.getUserMedia === "function") return null;
+  if (!window.isSecureContext) {
+    return "Recording needs a secure connection. Open this page over HTTPS or on localhost — on a phone, run `npm run dev:https` and use the https:// address.";
+  }
+  return "This browser doesn't support audio recording. You can still upload a file.";
+}
+
 export default function Recorder() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
@@ -40,6 +58,10 @@ export default function Recorder() {
   const [pending, setPending] = useState<{ blob: Blob; durationMs: number } | null>(
     null,
   );
+  // Resolved on the client only, since it depends on window.
+  const [micBlocked, setMicBlocked] = useState<string | null>(null);
+
+  useEffect(() => setMicBlocked(micUnavailableReason()), []);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -89,6 +111,11 @@ export default function Recorder() {
 
   async function start() {
     setError(null);
+    const blocked = micUnavailableReason();
+    if (blocked) {
+      setError(blocked);
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -201,7 +228,7 @@ export default function Recorder() {
   const scale = recording ? 1 + level * 0.08 : 1;
 
   return (
-    <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center gap-10 text-center">
+    <div className="record-pane flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center gap-10 py-8 text-center">
       <div className="relative grid place-items-center">
         {recording && (
           <>
@@ -215,10 +242,10 @@ export default function Recorder() {
 
         <button
           onClick={recording ? submit : start}
-          disabled={saving}
+          disabled={saving || Boolean(micBlocked)}
           aria-label={recording ? "Stop recording" : "Start recording"}
           style={{ transform: `scale(${scale})` }}
-          className={`relative grid h-40 w-40 place-items-center rounded-full border-2 border-ink transition-transform duration-75 disabled:opacity-40 ${
+          className={`record-button relative grid h-40 w-40 place-items-center rounded-full border-2 border-ink transition-transform duration-75 disabled:opacity-40 ${
             recording ? "bg-page text-ink" : "bg-ink text-page"
           }`}
         >
@@ -234,7 +261,7 @@ export default function Recorder() {
       </div>
 
       <div className="space-y-2">
-        <p className="font-mono text-4xl tabular-nums">
+        <p className="record-timer font-mono text-4xl tabular-nums">
           {formatTimestamp(elapsedMs / 1000)}
         </p>
         <p className="flex items-center justify-center gap-2 text-sm">
@@ -245,7 +272,9 @@ export default function Recorder() {
               ? "Name it to save"
               : saving
                 ? stage || "Saving"
-                : "Tap the microphone to start"}
+                : micBlocked
+                  ? "Recording unavailable here"
+                  : "Tap the microphone to start"}
         </p>
       </div>
 
@@ -265,6 +294,12 @@ export default function Recorder() {
             style={{ width: `${Math.max(4, Math.round(progress * 100))}%` }}
           />
         </div>
+      )}
+
+      {micBlocked && (
+        <p className="max-w-xs rounded-xl border-2 border-ink px-4 py-3 text-[13px] leading-relaxed">
+          {micBlocked}
+        </p>
       )}
 
       {/* Uploading an existing file is an alternative to capturing a new one, so

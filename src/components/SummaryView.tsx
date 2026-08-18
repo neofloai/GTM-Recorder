@@ -61,7 +61,7 @@ export default function SummaryView({
         <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={copy}
-            className="flex items-center gap-1.5 rounded-full border border-ink px-3 py-1.5 text-[12px] font-medium transition active:bg-ink active:text-page"
+            className="flex min-h-11 items-center gap-1.5 rounded-full border border-ink px-4 text-[12px] font-medium transition active:bg-ink active:text-page"
           >
             {copied ? <Check size={13} /> : <Copy size={13} />}
             {copied ? "Copied" : "Copy"}
@@ -69,7 +69,7 @@ export default function SummaryView({
           <button
             onClick={onRegenerate}
             disabled={generating}
-            className="flex items-center gap-1.5 rounded-full border border-ink px-3 py-1.5 text-[12px] font-medium transition active:bg-ink active:text-page disabled:opacity-40"
+            className="tap flex items-center justify-center gap-1.5 rounded-full border border-ink text-[12px] font-medium transition active:bg-ink active:text-page disabled:opacity-40"
             aria-label="Regenerate summary"
           >
             {generating ? (
@@ -90,7 +90,7 @@ export default function SummaryView({
           <button
             onClick={onRegenerate}
             disabled={generating}
-            className="mt-2.5 flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-page transition active:opacity-80 disabled:opacity-40"
+            className="mt-2.5 flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 text-[13px] font-semibold text-page transition active:opacity-80 disabled:opacity-40"
           >
             {generating ? (
               <Loader2 size={13} className="animate-spin" />

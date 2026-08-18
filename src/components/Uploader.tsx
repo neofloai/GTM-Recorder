@@ -142,7 +142,7 @@ export default function Uploader() {
       )}
 
       {!busy && !pending && (
-        <p className="text-center text-[12px]">
+        <p className="upload-hint text-center text-[12px]">
           MP3, M4A, WAV, FLAC, OGG or WebM · up to {formatMaxSize()}
         </p>
       )}

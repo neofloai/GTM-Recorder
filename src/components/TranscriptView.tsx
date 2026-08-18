@@ -83,7 +83,7 @@ export default function TranscriptView({
         </span>
         <button
           onClick={copyAll}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-ink px-3 py-1.5 text-[12px] font-medium transition active:bg-ink active:text-page"
+          className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-ink px-4 text-[12px] font-medium transition active:bg-ink active:text-page"
         >
           {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? "Copied" : "Copy"}
@@ -115,7 +115,7 @@ export default function TranscriptView({
                 <div className="mb-1 flex items-baseline gap-2 text-[12px]">
                   <button
                     onClick={() => onSeek(u.start)}
-                    className="font-mono tabular-nums underline decoration-dotted underline-offset-2"
+                    className="-my-2 -ml-1 inline-flex min-h-11 items-center px-1 font-mono tabular-nums underline decoration-dotted underline-offset-2"
                     title="Jump to this moment"
                   >
                     {formatTimestamp(u.start)}
@@ -150,7 +150,7 @@ export default function TranscriptView({
                 ) : (
                   <button
                     onClick={() => beginEdit(i, u.text)}
-                    className="block w-full text-left text-[15px] leading-relaxed"
+                    className="block w-full py-1 text-left text-[15px] leading-relaxed"
                   >
                     {u.text || <span className="opacity-40">(empty — tap to write)</span>}
                   </button>
