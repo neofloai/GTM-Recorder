@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, Loader2 } from "lucide-react";
+import Uploader from "@/components/Uploader";
 import { createRecording, transcribe } from "@/lib/client-api";
 import { MAX_AUDIO_BYTES, formatMaxSize } from "@/lib/audio";
 import { formatBytes, formatTimestamp } from "@/lib/types";
@@ -31,6 +32,7 @@ export default function Recorder() {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [level, setLevel] = useState(0);
   const [stage, setStage] = useState("");
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -139,10 +141,12 @@ export default function Recorder() {
       }
 
       setStage("Saving");
+      setProgress(0);
       const id = await createRecording(
         blob,
         durationMs,
         `Recording ${new Date().toLocaleString()}`,
+        setProgress,
       );
 
       // Kick transcription off without waiting; the detail page polls for status.
@@ -151,11 +155,13 @@ export default function Recorder() {
 
       setPhase("idle");
       setStage("");
+      setProgress(0);
       setElapsedMs(0);
       router.push(`/recordings/${id}`);
     } catch (err) {
       setPhase("idle");
       setStage("");
+      setProgress(0);
       setError(
         `Could not save the recording: ${err instanceof Error ? err.message : String(err)}`,
       );
@@ -223,10 +229,26 @@ export default function Recorder() {
         </button>
       )}
 
-      {saving && (
-        <p className="flex items-center gap-2 text-sm">
-          <Loader2 size={15} className="animate-spin" /> {stage}
-        </p>
+      {saving && progress > 0 && (
+        <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-wash">
+          <div
+            className="h-full bg-ink transition-all"
+            style={{ width: `${Math.max(4, Math.round(progress * 100))}%` }}
+          />
+        </div>
+      )}
+
+      {/* Uploading an existing file is an alternative to capturing a new one, so
+          it only shows when the recorder is idle. */}
+      {phase === "idle" && (
+        <>
+          <div className="flex w-full max-w-xs items-center gap-3">
+            <span className="h-px flex-1 bg-line" />
+            <span className="text-[11px] font-medium uppercase tracking-wide">or</span>
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <Uploader />
+        </>
       )}
 
       {error && (

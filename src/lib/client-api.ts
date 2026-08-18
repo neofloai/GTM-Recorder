@@ -17,22 +17,51 @@ export async function getRecording(id: string): Promise<Recording> {
   return (await json<{ recording: Recording }>(res)).recording;
 }
 
-export async function createRecording(
+/**
+ * Uploads audio and returns the new recording id. Uses XMLHttpRequest rather than
+ * fetch because fetch cannot report upload progress, and a 40 MB file needs a
+ * progress bar to not look frozen.
+ */
+export function createRecording(
   audio: Blob,
   durationMs: number,
   title: string,
+  onProgress?: (fraction: number) => void,
 ): Promise<string> {
   const params = new URLSearchParams({
     durationMs: String(Math.round(durationMs)),
     mimeType: audio.type || "audio/webm",
     title,
   });
-  const res = await fetch(`/api/recordings?${params}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/octet-stream" },
-    body: audio,
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/recordings?${params}`);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+    };
+
+    xhr.onload = () => {
+      let body: { id?: string; error?: string } = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        // Fall through to the status-code message below.
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && body.id) {
+        onProgress?.(1);
+        resolve(body.id);
+      } else {
+        reject(new Error(body.error || `upload failed (${xhr.status})`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("upload failed — network error"));
+    xhr.onabort = () => reject(new Error("upload cancelled"));
+
+    xhr.send(audio);
   });
-  return (await json<{ id: string }>(res)).id;
 }
 
 export async function renameRecording(id: string, title: string): Promise<void> {

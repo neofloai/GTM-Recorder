@@ -28,6 +28,15 @@ export async function POST(req: Request) {
     const title =
       url.searchParams.get("title") || `Recording ${new Date().toLocaleString()}`;
 
+    // The client validates too, but it can be bypassed — and a non-audio body
+    // would otherwise fail deep inside Deepgram with a confusing message.
+    if (!/^(audio|video)\//.test(mimeType)) {
+      return Response.json(
+        { error: `unsupported content type "${mimeType}" — audio is required` },
+        { status: 415 },
+      );
+    }
+
     const audio = new Uint8Array(await req.arrayBuffer());
     if (audio.byteLength === 0) {
       return Response.json({ error: "the recording is empty" }, { status: 400 });

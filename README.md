@@ -31,7 +31,9 @@ a fixed bottom tab bar:
 
 - **Record** — a large microphone button centred on the screen. Tap it to start; a
   pulsing ring, a live timer and a **Submit** button appear. Submit stops the capture,
-  saves it, kicks off transcription and takes you to the recording.
+  saves it, kicks off transcription and takes you to the recording. Below it,
+  **Upload a recording** takes an existing audio file through exactly the same
+  pipeline — tap to pick on a phone, or drag and drop on desktop.
 - **Recordings** — every recording, newest first, with a status chip (filled black once
   ready). Tap one to open it.
 
@@ -91,6 +93,20 @@ npx firebase deploy --only firestore:rules
 ```
 
 ## How it works
+
+**Uploading** — [`Uploader.tsx`](src/components/Uploader.tsx) accepts MP3, M4A, AAC,
+WAV, FLAC, OGG and WebM. It rejects the wrong type, empty files and anything over the
+size cap *before* uploading, so a 41 MB file never leaves the browser. Files whose type
+the OS reports as empty (common on Safari and some Android pickers) are matched on
+extension instead of being refused. Duration isn't carried by an uploaded file, so
+`probeDuration` reads it from the browser's own metadata decode; the title comes from the
+filename with its extension stripped. [`POST /api/recordings`](src/app/api/recordings/route.ts)
+also rejects a non-audio content type itself, since the client check is bypassable and
+the failure would otherwise surface as a confusing Deepgram error.
+
+Uploads use `XMLHttpRequest` rather than `fetch` — `fetch` cannot report upload progress,
+and a 40 MB file with no progress bar looks frozen. The recorder shares the same path, so
+it gets a real progress bar too.
 
 **Recording** — [`Recorder.tsx`](src/components/Recorder.tsx) uses `MediaRecorder` with
 echo cancellation and noise suppression, picking the first container the browser
