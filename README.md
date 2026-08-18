@@ -152,6 +152,20 @@ several `: OPENROUTER PROCESSING` keep-alive frames that carry no text delta. A
 `pull()`-driven `ReadableStream` stalls forever on those, so the pump runs in `start()`
 instead. Client disconnect stops the pump rather than burning tokens nobody will read.
 
+**Model choice** — summaries and chat both run on **OpenAI** models through OpenRouter.
+`OPENROUTER_MODEL` sets the default (`openai/gpt-5.6-terra`); the dropdown in the chat
+sheet overrides it per message and lists the `openai/*` chat models with the default
+pinned first — OpenRouter's full catalogue is 400+ entries, which is an unusable dropdown
+on a phone.
+
+The default was picked by measuring rather than guessing: on the real summary prompt,
+`gpt-5.6-terra` produced every required section in ~2.7s at ~$0.002, `gpt-5.4` cost ~65%
+more for comparable output, `gpt-5-mini` took 4× longer, and `gpt-5.6-luna` — though 12×
+cheaper — dropped a required section. Its 1.05M context also matters here, because the
+whole transcript is resent on every chat turn. To switch families (Anthropic, Google, …),
+change `OPENROUTER_MODEL` and the `openai/` filter in
+[`listModels`](src/lib/openrouter.ts).
+
 **Live updates** — with no Firestore listeners in the browser,
 [`usePoll`](src/lib/use-poll.ts) re-fetches every 2 s while a recording is uploading or
 transcribing, and stops once it settles.

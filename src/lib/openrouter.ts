@@ -3,7 +3,7 @@ const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export const DEFAULT_MODEL =
-  process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-5";
+  process.env.OPENROUTER_MODEL || "openai/gpt-5.6-terra";
 
 function headers(): Record<string, string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -126,17 +126,35 @@ export async function complete(
 
 export type OpenRouterModel = { id: string; name: string; contextLength: number };
 
+/** Variants that aren't useful for summarizing or chatting about a transcript. */
+const EXCLUDED = /(-image|-audio|-codex|:batch|:free|instruct)/;
+
+/**
+ * OpenAI chat models, for the picker. OpenRouter lists 400+ models, which is an
+ * unusable dropdown on a phone, and this app is configured for OpenAI — so the
+ * list is narrowed to `openai/*` with the configured default pinned first.
+ */
 export async function listModels(): Promise<OpenRouterModel[]> {
   const res = await fetch(`${OPENROUTER_BASE}/models`, { headers: headers() });
   if (!res.ok) throw new Error(`OpenRouter models failed (${res.status})`);
   const json = (await res.json()) as {
     data?: Array<{ id: string; name?: string; context_length?: number }>;
   };
-  return (json.data ?? [])
+
+  const models = (json.data ?? [])
+    .filter((m) => m.id.startsWith("openai/") && !EXCLUDED.test(m.id))
     .map((m) => ({
       id: m.id,
       name: m.name || m.id,
       contextLength: m.context_length ?? 0,
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
+
+  // Keep the default reachable without scrolling, and present even if OpenRouter
+  // stops listing it.
+  const rest = models.filter((m) => m.id !== DEFAULT_MODEL);
+  const current =
+    models.find((m) => m.id === DEFAULT_MODEL) ??
+    ({ id: DEFAULT_MODEL, name: DEFAULT_MODEL, contextLength: 0 } as OpenRouterModel);
+  return [current, ...rest];
 }
