@@ -3,7 +3,8 @@ import { DEFAULT_MODEL, streamChat, type LlmMessage } from "@/lib/openrouter";
 import { transcriptForPrompt } from "@/lib/transcript";
 import type { ChatMessage, Utterance } from "@/lib/types";
 
-export const maxDuration = 300;
+// Vercel Hobby caps a function at 60s; raise on Pro/Fluid if needed.
+export const maxDuration = 60;
 
 /** How many prior turns to replay, so context stays bounded on long threads. */
 const HISTORY_TURNS = 20;

@@ -2,7 +2,9 @@ import { readAudio, recordingDoc } from "@/lib/firebase/admin";
 import { transcribeBytes } from "@/lib/deepgram";
 
 // Deepgram can take a while on long files; well past the default 15s.
-export const maxDuration = 300;
+// Deepgram on a long file can still approach this; Vercel Hobby caps at 60s
+// and Pro/Fluid allows more, so raise it there if you record long sessions.
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const { recordingId } = (await req.json().catch(() => ({}))) as {

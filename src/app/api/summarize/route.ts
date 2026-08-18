@@ -3,7 +3,8 @@ import { complete, DEFAULT_MODEL } from "@/lib/openrouter";
 import { transcriptForPrompt } from "@/lib/transcript";
 import type { Utterance } from "@/lib/types";
 
-export const maxDuration = 300;
+// Vercel Hobby caps a function at 60s; raise on Pro/Fluid if needed.
+export const maxDuration = 60;
 
 const SYSTEM = [
   "You summarize transcripts of audio recordings.",

@@ -150,11 +150,18 @@ supports (Opus-in-WebM on Chrome/Firefox, MP4 on Safari). An `AnalyserNode` read
 input level and scales the button slightly as you speak, so it's obvious the mic is live.
 Submit stops capture and POSTs the blob once; the server does the rest.
 
-**Audio in Firestore** — [`POST /api/recordings`](src/app/api/recordings/route.ts)
-splits the blob into 768 KB chunk documents, written as native Firestore bytes (not
-base64, which would inflate everything by 33%), one document per commit since
-Firestore caps a commit at ~10 MiB. `chunkCount` is written to the parent document only
-*after* every chunk lands, so a failed upload can never be mistaken for complete audio.
+**Audio in Firestore** — the upload is deliberately split across requests:
+[`POST /api/recordings`](src/app/api/recordings/route.ts) writes metadata only, then the
+browser PUTs one 768 KB chunk at a time to
+[`/api/recordings/[id]/audio`](src/app/api/recordings/[id]/audio/route.ts) (three in
+flight), and a final POST verifies every chunk landed before writing `chunkCount`. So an
+interrupted upload can never be mistaken for complete audio, and a failed one deletes its
+own half-written record rather than sitting on "Saving" forever.
+
+The chunk size does double duty: it stays under Firestore's 1 MiB document cap *and*
+under Vercel's 4.5 MB serverless request-body limit, which would otherwise reject any
+recording bigger than about four megabytes. Chunks are stored as native Firestore bytes,
+not base64, which would inflate everything by 33%.
 
 **Playback** — [`GET /api/recordings/[id]/audio`](src/app/api/recordings/[id]/audio/route.ts)
 reassembles the chunks and serves them to a plain `<audio src>`. It honours `Range`
@@ -235,12 +242,14 @@ message.
 | Route | Purpose |
 |---|---|
 | `GET /api/recordings` | List, newest first |
-| `POST /api/recordings` | Create; body is raw audio, metadata in query params |
+| `POST /api/recordings` | Create from JSON metadata; audio follows in chunks |
 | `GET /api/recordings/[id]` | One recording (polled while processing) |
 | `PATCH /api/recordings/[id]` | Rename |
 | `PATCH /api/recordings/[id]/transcript` | Edit one utterance's text |
 | `DELETE /api/recordings/[id]` | Delete it, its chunks and its chat |
 | `GET /api/recordings/[id]/audio` | Reassembled audio, supports `Range` |
+| `PUT /api/recordings/[id]/audio?index=N` | Upload one 768 KB chunk |
+| `POST /api/recordings/[id]/audio?chunks=N` | Finalize, after verifying all chunks landed |
 | `GET /api/recordings/[id]/messages` | Chat history |
 | `POST /api/transcribe` | Deepgram |
 | `POST /api/summarize` | OpenRouter, cached unless `force` |
@@ -261,9 +270,16 @@ message.
 - **No raw Deepgram JSON is kept.** Per-word timings would need their own chunked
   documents; only the diarized utterances the UI uses are stored. Re-running
   transcription re-derives everything from the audio.
-- **Long recordings.** `maxDuration = 300` on the routes, and the whole audio buffer
-  passes through the Node process on both upload and transcription. On a serverless host
-  with a lower ceiling, a long file would need a background job instead of an API route.
+- **Deploying to Vercel.** Two platform limits shape the code. Request bodies are capped
+  at 4.5 MB, which is why the upload is chunked. And functions are capped at 60s on Hobby,
+  so `maxDuration = 60` everywhere — transcribing a very long recording can approach that,
+  since the audio is read out of Firestore and posted to Deepgram inside one invocation.
+  On Pro/Fluid you can raise `maxDuration`; beyond that, Deepgram's callback API would
+  move transcription out of the request entirely.
+- **Set the env vars in the platform**, not just locally: `FIREBASE_PROJECT_ID`,
+  `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `DEEPGRAM_API_KEY`,
+  `OPENROUTER_API_KEY`. The build itself doesn't need them — it completes fine without
+  any — but every API route does at runtime.
 - **Transcript context.** Transcripts over ~400k characters get their middle elided
   before being sent to the model. Past that, chunked retrieval would be the fix.
 - **Cost.** Deepgram bills per audio minute, OpenRouter per token, and every chat

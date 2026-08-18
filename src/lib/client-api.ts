@@ -1,3 +1,4 @@
+import { CHUNK_BYTES, UPLOAD_CONCURRENCY } from "@/lib/audio";
 import type { ChatMessage, Recording } from "@/lib/types";
 
 /** Unwraps a JSON response, surfacing the server's `error` string as thrown text. */
@@ -17,51 +18,84 @@ export async function getRecording(id: string): Promise<Recording> {
   return (await json<{ recording: Recording }>(res)).recording;
 }
 
+/** PUTs one chunk, reporting progress through onProgress via the caller. */
+function putChunk(id: string, index: number, chunk: Blob): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", `/api/recordings/${id}/audio?index=${index}`);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) return resolve();
+      let body: { error?: string } = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        // Fall through to the status message.
+      }
+      reject(new Error(body.error || `chunk ${index} failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error(`chunk ${index} failed — network error`));
+    xhr.send(chunk);
+  });
+}
+
 /**
- * Uploads audio and returns the new recording id. Uses XMLHttpRequest rather than
- * fetch because fetch cannot report upload progress, and a 40 MB file needs a
- * progress bar to not look frozen.
+ * Creates a recording and uploads its audio.
+ *
+ * The audio goes up one CHUNK_BYTES piece per request rather than in a single
+ * body, because Vercel caps a serverless request at 4.5 MB — a whole recording
+ * would be rejected outright. `chunkCount` is only written by the finalize call
+ * once every piece has landed, so an interrupted upload can't look complete.
  */
-export function createRecording(
+export async function createRecording(
   audio: Blob,
   durationMs: number,
   title: string,
   onProgress?: (fraction: number) => void,
 ): Promise<string> {
-  const params = new URLSearchParams({
-    durationMs: String(Math.round(durationMs)),
-    mimeType: audio.type || "audio/webm",
-    title,
+  const created = await fetch("/api/recordings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title,
+      durationMs: Math.round(durationMs),
+      sizeBytes: audio.size,
+      mimeType: audio.type || "audio/webm",
+    }),
   });
+  const { id } = await json<{ id: string }>(created);
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/api/recordings?${params}`);
-    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+  try {
+    const total = Math.ceil(audio.size / CHUNK_BYTES);
+    let done = 0;
+    onProgress?.(0);
 
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
-    };
-
-    xhr.onload = () => {
-      let body: { id?: string; error?: string } = {};
-      try {
-        body = JSON.parse(xhr.responseText);
-      } catch {
-        // Fall through to the status-code message below.
+    // A small amount of parallelism keeps a long upload moving without opening
+    // dozens of connections at once.
+    for (let i = 0; i < total; i += UPLOAD_CONCURRENCY) {
+      const group = [];
+      for (let k = i; k < Math.min(i + UPLOAD_CONCURRENCY, total); k++) {
+        const slice = audio.slice(k * CHUNK_BYTES, Math.min((k + 1) * CHUNK_BYTES, audio.size));
+        group.push(
+          putChunk(id, k, slice).then(() => {
+            done++;
+            onProgress?.(done / total);
+          }),
+        );
       }
-      if (xhr.status >= 200 && xhr.status < 300 && body.id) {
-        onProgress?.(1);
-        resolve(body.id);
-      } else {
-        reject(new Error(body.error || `upload failed (${xhr.status})`));
-      }
-    };
-    xhr.onerror = () => reject(new Error("upload failed — network error"));
-    xhr.onabort = () => reject(new Error("upload cancelled"));
+      await Promise.all(group);
+    }
 
-    xhr.send(audio);
-  });
+    await json(
+      await fetch(`/api/recordings/${id}/audio?chunks=${total}`, { method: "POST" }),
+    );
+    onProgress?.(1);
+    return id;
+  } catch (err) {
+    // Don't leave a half-uploaded recording stuck on "Saving" in the list.
+    await fetch(`/api/recordings/${id}`, { method: "DELETE" }).catch(() => {});
+    throw err;
+  }
 }
 
 export async function renameRecording(id: string, title: string): Promise<void> {

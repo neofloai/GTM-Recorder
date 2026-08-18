@@ -4,8 +4,15 @@
  * stored as native Firestore bytes (no base64 inflation).
  */
 
-/** Raw bytes per chunk document, comfortably under Firestore's 1,048,576 cap. */
+/**
+ * Raw bytes per chunk document, comfortably under Firestore's 1,048,576 cap.
+ * This doubles as the upload request size: Vercel caps a serverless request body
+ * at 4.5 MB, so one chunk per request stays far inside that.
+ */
 export const CHUNK_BYTES = 768 * 1024;
+
+/** Chunk uploads run this many at a time. */
+export const UPLOAD_CONCURRENCY = 3;
 
 /**
  * Ceiling on a single recording. Roughly 2–3 hours of Opus mic audio. Firestore

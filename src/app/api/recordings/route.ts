@@ -1,8 +1,9 @@
-import { recordingsCollection, writeAudio } from "@/lib/firebase/admin";
-import { CHUNK_BYTES, MAX_AUDIO_BYTES, formatMaxSize } from "@/lib/audio";
+import { recordingsCollection } from "@/lib/firebase/admin";
+import { MAX_AUDIO_BYTES, formatMaxSize } from "@/lib/audio";
 import type { Recording } from "@/lib/types";
 
-export const maxDuration = 300;
+// Metadata only — the audio arrives in separate chunk requests, so this is fast.
+export const maxDuration = 60;
 
 /** Lists recordings, newest first. Audio chunks are never included. */
 export async function GET() {
@@ -17,23 +18,28 @@ export async function GET() {
 }
 
 /**
- * Creates a recording. The body is the raw audio; metadata rides along in query
- * params so we avoid multipart parsing for what is otherwise one big blob.
+ * Creates the recording document. The audio is uploaded afterwards, one chunk per
+ * request to PUT /api/recordings/[id]/audio, because Vercel caps a serverless
+ * request body at 4.5 MB and a recording can be much larger than that.
+ *
+ * `chunkCount` is deliberately not set here — it lands only once every chunk has
+ * been stored, so an interrupted upload can never look like complete audio.
  */
 export async function POST(req: Request) {
   try {
-    const url = new URL(req.url);
-    const durationMs = Number(url.searchParams.get("durationMs") ?? "0");
-    const mimeType = url.searchParams.get("mimeType") || "audio/webm";
-    // The client asks for a title before uploading; enforce it here too so a
-    // recording can never end up untitled.
-    const title = (url.searchParams.get("title") ?? "").trim();
+    const body = (await req.json().catch(() => ({}))) as {
+      title?: string;
+      durationMs?: number;
+      sizeBytes?: number;
+      mimeType?: string;
+    };
+
+    const title = (body.title ?? "").trim();
     if (!title) {
       return Response.json({ error: "a title is required" }, { status: 400 });
     }
 
-    // The client validates too, but it can be bypassed — and a non-audio body
-    // would otherwise fail deep inside Deepgram with a confusing message.
+    const mimeType = body.mimeType || "audio/webm";
     if (!/^(audio|video)\//.test(mimeType)) {
       return Response.json(
         { error: `unsupported content type "${mimeType}" — audio is required` },
@@ -41,11 +47,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const audio = new Uint8Array(await req.arrayBuffer());
-    if (audio.byteLength === 0) {
-      return Response.json({ error: "the recording is empty" }, { status: 400 });
+    const sizeBytes = Number(body.sizeBytes ?? 0);
+    if (!sizeBytes || sizeBytes < 0) {
+      return Response.json({ error: "sizeBytes is required" }, { status: 400 });
     }
-    if (audio.byteLength > MAX_AUDIO_BYTES) {
+    if (sizeBytes > MAX_AUDIO_BYTES) {
       return Response.json(
         { error: `recording exceeds the ${formatMaxSize()} limit` },
         { status: 413 },
@@ -58,18 +64,12 @@ export async function POST(req: Request) {
       title,
       status: "uploading",
       createdAt: Date.now(),
-      durationMs,
-      sizeBytes: audio.byteLength,
+      durationMs: Math.max(0, Math.round(Number(body.durationMs ?? 0))),
+      sizeBytes,
       mimeType,
     });
 
-    const chunkCount = await writeAudio(ref.id, audio, CHUNK_BYTES);
-
-    // chunkCount lands only once every chunk is written, so a failed upload can
-    // never look like complete audio.
-    await ref.update({ status: "uploaded", chunkCount });
-
-    return Response.json({ id: ref.id, chunkCount, sizeBytes: audio.byteLength });
+    return Response.json({ id: ref.id });
   } catch (err) {
     return Response.json({ error: message(err) }, { status: 500 });
   }
