@@ -97,14 +97,14 @@ export default function Chat({ recordingId }: { recordingId: string }) {
       >
         {!messages.length && !streaming && (
           <div className="space-y-2">
-            <p className="pb-1 text-[13px] text-subtle">
+            <p className="pb-1 text-[13px]">
               Ask anything about what was said — answers cite timestamps.
             </p>
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => void send(s)}
-                className="block w-full rounded-xl border border-line px-3 py-2 text-left text-[13.5px] text-strong transition hover:border-subtle hover:bg-raised"
+                className="block w-full rounded-xl border border-line px-3.5 py-2.5 text-left text-[14px] transition active:bg-wash sm:hover:bg-wash"
               >
                 {s}
               </button>
@@ -115,13 +115,13 @@ export default function Chat({ recordingId }: { recordingId: string }) {
         {messages.map((m) =>
           m.role === "user" ? (
             <div key={m.id} className="flex justify-end">
-              <div className="max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-strong px-3.5 py-2.5 text-[14px] leading-relaxed text-white">
+              <div className="max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-ink px-3.5 py-2.5 text-[15px] leading-relaxed text-page">
                 {m.content}
               </div>
             </div>
           ) : (
             <div key={m.id} className="flex justify-start">
-              <div className="max-w-[92%] rounded-2xl rounded-bl-md bg-raised px-3.5 py-2.5">
+              <div className="max-w-[92%] rounded-2xl rounded-bl-md border border-line px-3.5 py-2.5">
                 <Markdown text={m.content} />
               </div>
             </div>
@@ -130,20 +130,20 @@ export default function Chat({ recordingId }: { recordingId: string }) {
 
         {streaming && (
           <div className="flex justify-start">
-            <div className="max-w-[92%] rounded-2xl rounded-bl-md bg-raised px-3.5 py-2.5">
+            <div className="max-w-[92%] rounded-2xl rounded-bl-md border border-line px-3.5 py-2.5">
               <Markdown text={streaming} />
             </div>
           </div>
         )}
 
         {busy && !streaming && (
-          <p className="flex items-center gap-2 text-xs text-subtle">
+          <p className="flex items-center gap-2 text-xs">
             <Loader2 size={13} className="animate-spin" /> Thinking…
           </p>
         )}
 
         {error && (
-          <p className="rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-[13px] text-brand">
+          <p className="rounded-xl border-2 border-ink px-3 py-2 text-[13px] break-words">
             {error}
           </p>
         )}
@@ -168,12 +168,12 @@ export default function Chat({ recordingId }: { recordingId: string }) {
             }}
             rows={1}
             placeholder="Ask about this recording…"
-            className="max-h-28 flex-1 resize-none rounded-xl border border-line bg-surface px-3 py-2.5 text-[14px] text-strong outline-none placeholder:text-subtle focus:border-focus"
+            className="max-h-28 flex-1 resize-none rounded-2xl border border-line px-3.5 py-2.5 text-[15px] outline-none placeholder:text-placeholder focus:border-ink"
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-strong text-white transition hover:opacity-90 disabled:opacity-25"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-page transition active:opacity-80 disabled:opacity-25"
             aria-label="Send"
           >
             {busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
@@ -184,7 +184,7 @@ export default function Chat({ recordingId }: { recordingId: string }) {
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            className="mt-2 w-full truncate rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-subtle outline-none focus:border-focus focus:text-strong"
+            className="mt-2 w-full truncate rounded-lg border border-line px-2 py-2 text-xs outline-none focus:border-ink"
             aria-label="Model"
           >
             {models.map((m) => (

@@ -23,10 +23,24 @@ Firestore  recordings/<id>.transcript
                                  both via OpenRouter
 ```
 
-The recording page shows two tabs — **Transcript** and **Summary** — with a **Chat with
-this** button in the tab bar. Clicking it opens a chatbox docked bottom-right
-(near-fullscreen on phones) that answers from the transcript and cites timestamps.
-`Esc` closes it. Clicking a timestamp in the transcript seeks the audio player.
+## The interface
+
+Strictly black and white — white background, black text, no colour anywhere. State is
+shown by inverting fill, by weight, and by rules, never by hue. Built mobile-first, with
+a fixed bottom tab bar:
+
+- **Record** — a large microphone button centred on the screen. Tap it to start; a
+  pulsing ring, a live timer and a **Submit** button appear. Submit stops the capture,
+  saves it, kicks off transcription and takes you to the recording.
+- **Recordings** — every recording, newest first, with a status chip (filled black once
+  ready). Tap one to open it.
+
+A recording's page has **Transcript** and **Summary** tabs plus a **Chat with this
+transcript** button that opens a chatbox — full-screen on a phone, docked bottom-right on
+desktop, `Esc` to close. Tapping a timestamp in the transcript seeks the audio.
+
+A recording containing no speech says so plainly rather than showing an empty panel, and
+hides the summary and chat, which would have nothing to work with.
 
 ## Setup
 
@@ -80,9 +94,9 @@ npx firebase deploy --only firestore:rules
 
 **Recording** — [`Recorder.tsx`](src/components/Recorder.tsx) uses `MediaRecorder` with
 echo cancellation and noise suppression, picking the first container the browser
-supports (Opus-in-WebM on Chrome/Firefox, MP4 on Safari). An `AnalyserNode` drives the
-live level meter, and pause time is excluded from the duration. On stop it POSTs the
-blob once; the server does the rest.
+supports (Opus-in-WebM on Chrome/Firefox, MP4 on Safari). An `AnalyserNode` reads the
+input level and scales the button slightly as you speak, so it's obvious the mic is live.
+Submit stops capture and POSTs the blob once; the server does the rest.
 
 **Audio in Firestore** — [`POST /api/recordings`](src/app/api/recordings/route.ts)
 splits the blob into 768 KB chunk documents, written as native Firestore bytes (not

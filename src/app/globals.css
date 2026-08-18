@@ -1,49 +1,72 @@
 @import "tailwindcss";
 
 @theme {
-  /* Light, high-contrast palette: white surfaces, near-black text. */
+  /* Strictly black and white: white surfaces, black text. Greys are only ever
+     black at reduced strength — no hues anywhere. */
   --color-page: #ffffff;
-  --color-surface: #ffffff;
-  --color-raised: #f7f8f9;
-  --color-line: #e4e6e9;
-  --color-subtle: #5f6672;
-  --color-strong: #0a0a0a;
-  --color-brand: #d92c2c;
-  --color-focus: #1a1a1a;
+  --color-ink: #000000;
+  --color-line: #d4d4d4;
+  --color-hairline: #ebebeb;
+  --color-wash: #f4f4f4;
+  --color-placeholder: #8a8a8a;
 }
 
 html,
 body {
   background: var(--color-page);
-  color: var(--color-strong);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+  /* Keep the fixed tab bar clear of the iOS home indicator. */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Slim scrollbars so the transcript and chat panes don't feel heavy. */
+/* Stop iOS from zooming when a text field is focused. */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cfd3d8 transparent;
+  scrollbar-color: var(--color-line) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #cfd3d8;
+  background: var(--color-line);
   border-radius: 9999px;
 }
 
-@keyframes pulse-dot {
+/* The pulsing ring around the record button while capturing. */
+@keyframes record-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  70%,
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+.record-ring {
+  animation: record-ring 1.6s ease-out infinite;
+}
+
+@keyframes blink {
   0%,
   100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.25;
+    opacity: 0.2;
   }
 }
-.recording-dot {
-  animation: pulse-dot 1.2s ease-in-out infinite;
+.blink {
+  animation: blink 1.2s ease-in-out infinite;
 }
 
 @keyframes panel-in {
@@ -60,7 +83,8 @@ body {
   animation: panel-in 0.18s ease-out;
 }
 
-/* Keep the native audio player from looking out of place on white. */
+/* Native audio controls render in colour otherwise. */
 audio {
   color-scheme: light;
+  filter: grayscale(1);
 }

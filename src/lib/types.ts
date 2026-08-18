@@ -68,3 +68,14 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/**
+ * True when a transcript exists and actually contains speech. Deepgram happily
+ * returns an empty transcript for silence or non-speech audio, and the UI has to
+ * say so rather than rendering a blank panel.
+ */
+export function hasSpeech(recording: Recording): boolean {
+  const t = recording.transcript;
+  if (!t) return false;
+  return t.text.trim().length > 0 || t.utterances.length > 0;
+}

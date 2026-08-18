@@ -3,14 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  CircleAlert,
-  Loader2,
-  Pencil,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import RecordingTabs from "@/components/RecordingTabs";
 import {
   audioUrl,
@@ -21,7 +14,7 @@ import {
   transcribe,
 } from "@/lib/client-api";
 import { usePoll } from "@/lib/use-poll";
-import { formatBytes, formatTimestamp, type Recording } from "@/lib/types";
+import { formatBytes, formatTimestamp, hasSpeech, type Recording } from "@/lib/types";
 
 const isBusy = (r: Recording) =>
   r.status === "uploading" || r.status === "uploaded" || r.status === "transcribing";
@@ -62,7 +55,6 @@ export default function RecordingPage() {
         setSummarizing(false);
       }
     },
-    // refresh is stable enough for this purpose; recordingId is what matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [recordingId],
   );
@@ -72,6 +64,8 @@ export default function RecordingPage() {
   useEffect(() => {
     if (autoSummaryFired.current) return;
     if (recording?.status !== "transcribed" || recording.summary) return;
+    // Silence produces an empty transcript — summarizing it would just 409.
+    if (!hasSpeech(recording)) return;
     autoSummaryFired.current = true;
     void runSummarize(false);
   }, [recording?.status, recording?.summary, runSummarize]);
@@ -105,7 +99,7 @@ export default function RecordingPage() {
     if (!confirm("Delete this recording, its transcript and its chat history?")) return;
     try {
       await deleteRecording(recordingId);
-      router.push("/");
+      router.push("/recordings");
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err));
     }
@@ -120,10 +114,10 @@ export default function RecordingPage() {
 
   if (loading && !recording) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 py-6">
         <BackLink />
-        <p className="flex items-center gap-2 text-sm text-subtle">
-          <Loader2 size={14} className="animate-spin" /> Loading recording…
+        <p className="flex items-center gap-2 text-sm">
+          <Loader2 size={15} className="animate-spin" /> Loading…
         </p>
       </div>
     );
@@ -131,11 +125,10 @@ export default function RecordingPage() {
 
   if (!recording) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 py-6">
         <BackLink />
-        <p className="flex items-start gap-2 rounded-2xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-brand">
-          <CircleAlert size={16} className="mt-0.5 shrink-0" />
-          <span className="break-words">{error ?? "That recording doesn't exist."}</span>
+        <p className="rounded-xl border-2 border-ink px-4 py-3 text-sm break-words">
+          {error ?? "That recording doesn't exist."}
         </p>
       </div>
     );
@@ -144,10 +137,10 @@ export default function RecordingPage() {
   const ready = recording.status === "transcribed" && Boolean(recording.transcript);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 py-6">
       <BackLink />
 
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <header className="space-y-1">
         {editingTitle ? (
           <input
             autoFocus
@@ -157,34 +150,34 @@ export default function RecordingPage() {
               if (e.key === "Enter") void saveTitle(e.currentTarget.value);
               if (e.key === "Escape") setEditingTitle(false);
             }}
-            className="flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-[22px] font-semibold outline-none focus:border-focus"
+            className="w-full rounded-lg border border-line px-3 py-1.5 text-xl font-semibold outline-none focus:border-ink"
           />
         ) : (
-          <h1 className="flex items-center gap-2 text-[22px] font-semibold tracking-tight">
-            {recording.title}
+          <div className="flex items-start gap-2">
+            <h1 className="min-w-0 flex-1 text-xl font-semibold tracking-tight">
+              {recording.title}
+            </h1>
             <button
               onClick={() => setEditingTitle(true)}
-              className="text-subtle transition hover:text-strong"
+              className="mt-1 shrink-0"
               aria-label="Rename"
             >
-              <Pencil size={14} />
+              <Pencil size={15} strokeWidth={1.9} />
             </button>
-          </h1>
+            <button
+              onClick={() => void remove()}
+              className="mt-1 shrink-0"
+              aria-label="Delete recording"
+            >
+              <Trash2 size={15} strokeWidth={1.9} />
+            </button>
+          </div>
         )}
-        <div className="ml-auto flex items-center gap-3">
-          <span className="text-xs text-subtle">
-            {new Date(recording.createdAt).toLocaleString()} ·{" "}
-            {formatTimestamp(recording.durationMs / 1000)} ·{" "}
-            {formatBytes(recording.sizeBytes)}
-          </span>
-          <button
-            onClick={() => void remove()}
-            className="text-subtle transition hover:text-brand"
-            aria-label="Delete recording"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
+        <p className="text-[12px] uppercase tracking-wide">
+          {new Date(recording.createdAt).toLocaleString()} ·{" "}
+          {formatTimestamp(recording.durationMs / 1000)} ·{" "}
+          {formatBytes(recording.sizeBytes)}
+        </p>
       </header>
 
       {recording.chunkCount ? (
@@ -194,15 +187,15 @@ export default function RecordingPage() {
           controls
           preload="metadata"
           onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-          className="w-full rounded-xl border border-line bg-raised p-2"
+          className="w-full rounded-xl border border-line p-2"
         />
       ) : null}
 
       {isBusy(recording) && (
-        <p className="flex items-center gap-2 rounded-2xl border border-line bg-raised px-4 py-3 text-sm text-subtle">
-          <Loader2 size={14} className="animate-spin" />
+        <p className="flex items-center gap-2 rounded-xl border border-line px-4 py-3 text-sm">
+          <Loader2 size={15} className="animate-spin" />
           {recording.status === "transcribing"
-            ? "Deepgram is transcribing this recording. This page updates itself when it's done."
+            ? "Transcribing. This page updates itself when it's done."
             : recording.status === "uploading"
               ? "Saving audio…"
               : "Queued for transcription…"}
@@ -210,15 +203,12 @@ export default function RecordingPage() {
       )}
 
       {(recording.status === "error" || actionError) && (
-        <div className="rounded-2xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm">
-          <p className="flex items-start gap-2 text-brand">
-            <CircleAlert size={16} className="mt-0.5 shrink-0" />
-            <span className="break-words">{actionError || recording.error}</span>
-          </p>
+        <div className="rounded-xl border-2 border-ink px-4 py-3 text-sm">
+          <p className="break-words">{actionError || recording.error}</p>
           <button
             onClick={() => void retryTranscription()}
             disabled={retrying}
-            className="mt-3 flex items-center gap-2 rounded-lg border border-brand/40 px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/10 disabled:opacity-50"
+            className="mt-3 flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-page transition active:opacity-80 disabled:opacity-40"
           >
             {retrying ? (
               <Loader2 size={13} className="animate-spin" />
@@ -247,10 +237,10 @@ export default function RecordingPage() {
 function BackLink() {
   return (
     <Link
-      href="/"
-      className="inline-flex items-center gap-1.5 text-sm text-subtle transition hover:text-strong"
+      href="/recordings"
+      className="inline-flex items-center gap-1.5 text-[13px] font-medium uppercase tracking-wide"
     >
-      <ArrowLeft size={14} /> All recordings
+      <ArrowLeft size={15} strokeWidth={2} /> Recordings
     </Link>
   );
 }

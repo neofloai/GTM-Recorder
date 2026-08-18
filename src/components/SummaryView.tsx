@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { Check, Copy, Loader2, RefreshCw } from "lucide-react";
 import Markdown from "@/components/Markdown";
 import type { Recording } from "@/lib/types";
 
@@ -31,10 +31,8 @@ export default function SummaryView({
   if (generating && !summary) {
     return (
       <div className="grid place-items-center gap-3 px-4 py-20 text-center">
-        <Loader2 size={22} className="animate-spin text-subtle" />
-        <p className="text-sm text-subtle">
-          Writing the summary from the transcript…
-        </p>
+        <Loader2 size={22} className="animate-spin" />
+        <p className="text-sm">Writing the summary…</p>
       </div>
     );
   }
@@ -42,14 +40,11 @@ export default function SummaryView({
   if (!summary) {
     return (
       <div className="grid place-items-center gap-4 px-4 py-16 text-center">
-        <Sparkles size={22} className="text-subtle" />
-        <div>
-          <p className="text-sm font-medium">No summary yet</p>
-          {error && <p className="mt-1 max-w-md text-xs text-brand">{error}</p>}
-        </div>
+        <p className="text-sm font-medium">No summary yet</p>
+        {error && <p className="max-w-md text-[13px]">{error}</p>}
         <button
           onClick={onRegenerate}
-          className="rounded-lg bg-strong px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-page transition active:opacity-80"
         >
           Generate summary
         </button>
@@ -59,14 +54,14 @@ export default function SummaryView({
 
   return (
     <div>
-      <div className="flex items-center gap-2 border-b border-line px-4 py-3 sm:px-5">
-        <span className="min-w-0 flex-1 truncate text-xs text-subtle">
-          {summary.model} · {new Date(summary.generatedAt).toLocaleString()}
+      <div className="flex items-center gap-2 border-b border-hairline px-4 py-3">
+        <span className="min-w-0 flex-1 truncate text-[12px] uppercase tracking-wide">
+          {summary.model}
         </span>
         <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={copy}
-            className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-subtle transition hover:border-subtle hover:text-strong"
+            className="flex items-center gap-1.5 rounded-full border border-ink px-3 py-1.5 text-[12px] font-medium transition active:bg-ink active:text-page"
           >
             {copied ? <Check size={13} /> : <Copy size={13} />}
             {copied ? "Copied" : "Copy"}
@@ -74,25 +69,21 @@ export default function SummaryView({
           <button
             onClick={onRegenerate}
             disabled={generating}
-            className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-subtle transition hover:border-subtle hover:text-strong disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-full border border-ink px-3 py-1.5 text-[12px] font-medium transition active:bg-ink active:text-page disabled:opacity-40"
+            aria-label="Regenerate summary"
           >
             {generating ? (
               <Loader2 size={13} className="animate-spin" />
             ) : (
               <RefreshCw size={13} />
             )}
-            Regenerate
           </button>
         </div>
       </div>
 
-      {error && (
-        <p className="border-b border-line bg-brand/5 px-5 py-2.5 text-xs text-brand">
-          {error}
-        </p>
-      )}
+      {error && <p className="border-b border-hairline px-4 py-2.5 text-[13px]">{error}</p>}
 
-      <div className="max-h-[58vh] overflow-y-auto px-4 py-4 sm:px-5">
+      <div className="max-h-[55vh] overflow-y-auto px-4 py-4">
         <Markdown text={summary.text} />
       </div>
     </div>

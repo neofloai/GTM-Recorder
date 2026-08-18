@@ -18,7 +18,7 @@ function renderBlocks(text: string): ReactNode[] {
   const flushParagraph = () => {
     if (!paragraph.length) return;
     blocks.push(
-      <p key={`p-${blocks.length}`} className="text-[14.5px] leading-relaxed text-strong">
+      <p key={`p-${blocks.length}`} className="text-[15px] leading-relaxed">
         {inline(paragraph.join(" "))}
       </p>,
     );
@@ -32,7 +32,7 @@ function renderBlocks(text: string): ReactNode[] {
     blocks.push(
       <Tag
         key={`l-${blocks.length}`}
-        className={`space-y-1.5 pl-5 text-[14.5px] leading-relaxed text-strong ${
+        className={`space-y-1.5 pl-5 text-[15px] leading-relaxed ${
           ordered ? "list-decimal" : "list-disc"
         }`}
       >
@@ -68,8 +68,8 @@ function renderBlocks(text: string): ReactNode[] {
           key={`h-${blocks.length}`}
           className={
             level <= 2
-              ? "pt-1 text-[13px] font-semibold uppercase tracking-wide text-subtle"
-              : "pt-1 text-[14px] font-semibold text-strong"
+              ? "pt-1 text-[12px] font-semibold uppercase tracking-wide"
+              : "pt-1 text-[14px] font-semibold"
           }
         >
           {inline(heading[2])}
@@ -136,7 +136,7 @@ function inline(text: string): ReactNode[] {
       out.push(
         <code
           key={key++}
-          className="rounded bg-raised px-1 py-0.5 font-mono text-[0.85em]"
+          className="rounded bg-wash px-1 py-0.5 font-mono text-[0.85em]"
         >
           {token.slice(1, -1)}
         </code>,
@@ -145,7 +145,7 @@ function inline(text: string): ReactNode[] {
       out.push(
         <span
           key={key++}
-          className="font-mono text-[0.85em] tabular-nums text-subtle"
+          className="font-mono text-[0.85em] tabular-nums underline decoration-dotted underline-offset-2"
         >
           {token}
         </span>,

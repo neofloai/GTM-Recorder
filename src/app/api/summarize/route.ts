@@ -57,9 +57,15 @@ export async function POST(req: Request) {
     transcript?: { text?: string; utterances?: Utterance[] };
     summary?: { text?: string };
   };
-  if (!data.transcript?.text) {
+  if (!data.transcript) {
     return Response.json(
       { error: "this recording has not been transcribed yet" },
+      { status: 409 },
+    );
+  }
+  if (!data.transcript.text?.trim() && !data.transcript.utterances?.length) {
+    return Response.json(
+      { error: "no speech was detected in this recording, so there is nothing to summarize" },
       { status: 409 },
     );
   }
