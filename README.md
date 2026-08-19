@@ -256,6 +256,28 @@ message.
 | `POST /api/chat` | OpenRouter, streamed plain text |
 | `GET /api/models` | OpenRouter catalogue for the model picker |
 
+## Dependency security
+
+`npm audit` reports **0 vulnerabilities**. Getting there needed one thing beyond a
+version bump, so it's worth recording:
+
+- **Next.js is pinned to the 15.5.x line** (`15.5.23`), not `latest`. 15.1.7 carried two
+  critical advisories — RCE in the React flight protocol (GHSA-9qr9-h5gf-34mp) and an
+  authorization bypass in middleware (GHSA-f82v-jwr5-mffw) — plus a long tail of DoS and
+  cache-poisoning issues. 15.5.23 clears all of them without the Next 16 major.
+- **`overrides` in package.json** force fixed versions of three transitive packages that
+  their parents still pin:
+  - `postcss` — Next 15.5.23 ships 8.4.31, which has a source-map path-traversal issue.
+  - `sharp` — Next ships 0.34.x, which inherits libvips CVEs. Nothing here uses
+    `next/image`, so this code never runs, but the audit flags it regardless.
+  - `uuid` — every remaining advisory traced to `uuid < 11.1.1` under the Google Cloud
+    libraries. Overriding that one package cleared six reported vulnerabilities at once.
+
+npm's own suggested fix for the firebase-admin chain was to *downgrade* to `10.3.0`, which
+would be a large step backwards; `firebase-admin@14` plus the `uuid` override is the
+correct direction. Re-check with `npm audit` after any dependency change, and drop an
+override once its parent catches up.
+
 ## Notes and limits
 
 - **No auth means no access control.** Anyone who can reach the server can read and
